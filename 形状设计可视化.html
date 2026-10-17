@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>几何绘图实验室 · 基于坐标的形状设计</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%233b5bdb' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e8590c'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper:#f7f4ec; --ink:#24292f; --muted:#6b7280; --line:#d8d2c2;
+    --blue:#3b5bdb; --orange:#e8590c; --teal:#0ca678; --red:#e03131;
+    --panel:#fffdf8; --border:#e4ddcc;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:var(--paper); color:var(--ink);
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 20px; border-bottom:2px solid var(--ink);
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+    background:var(--panel);
+  }
+  header h1{font-size:20px; letter-spacing:.5px;}
+  header .sub{font-size:13px; color:var(--muted);}
+  header .tag{
+    margin-left:auto; font-size:12px; border:1px solid var(--ink);
+    padding:3px 8px; border-radius:999px; letter-spacing:1px;
+  }
+  main{
+    flex:1; display:flex; flex-wrap:wrap; gap:16px; padding:16px;
+    align-items:stretch;
+  }
+  aside{
+    width:300px; flex-shrink:0; background:var(--panel);
+    border:1px solid var(--border); border-radius:8px; padding:16px;
+    display:flex; flex-direction:column; gap:14px; max-height:calc(100vh - 130px);
+    overflow-y:auto;
+  }
+  .sec-title{
+    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--muted);
+    border-bottom:1px solid var(--border); padding-bottom:6px;
+  }
+  .types{display:grid; grid-template-columns:repeat(2,1fr); gap:6px;}
+  .types button{
+    font-size:13px; padding:8px 4px; border:1px solid var(--border);
+    background:#fff; border-radius:6px; cursor:pointer; color:var(--ink);
+    font-family:inherit;
+  }
+  .types button.on{border-color:var(--blue); background:var(--blue); color:#fff;}
+  .field{display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px;}
+  .field label{width:34px; color:var(--muted); flex-shrink:0;}
+  .field input{
+    flex:1; min-width:0; padding:6px 8px; border:1px solid var(--border);
+    border-radius:5px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px;
+    background:#fff; color:var(--ink);
+  }
+  .row{display:flex; gap:8px;}
+  .row .field{flex:1;}
+  .actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{
+    flex:1; min-width:110px; padding:9px 10px; font-size:13px; border-radius:6px;
+    cursor:pointer; font-family:inherit; text-align:center;
+    border:1px solid var(--ink); background:#fff; color:var(--ink);
+  }
+  .btn.primary{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .btn.danger{border-color:var(--red); color:var(--red);}
+  .info-box{
+    border:1px dashed var(--border); border-radius:6px; padding:10px;
+    font-size:13px; min-height:86px; background:#fbf9f2; white-space:pre-line;
+    line-height:1.7;
+  }
+  .info-box .err{color:var(--red);}
+  .legend{font-size:12px; color:var(--muted); line-height:1.8;}
+  .legend b{color:var(--ink);}
+  section{flex:1; min-width:320px; display:flex; flex-direction:column; gap:8px;}
+  .canvas-wrap{
+    flex:1; border:1px solid var(--border); border-radius:8px; overflow:hidden;
+    background:#fff; position:relative; min-height:420px;
+  }
+  canvas{display:block; width:100%; height:100%; cursor:crosshair; touch-action:none;}
+  .hint{
+    font-size:12px; color:var(--muted); padding:0 4px;
+  }
+  .hint code{background:#efe9da; padding:1px 5px; border-radius:4px; font-size:11px;}
+  footer{
+    padding:10px 20px; font-size:12px; color:var(--muted);
+    border-top:1px solid var(--border); background:var(--panel);
+  }
+  @media (max-width:720px){
+    main{flex-direction:column;}
+    aside{width:100%; max-height:none; order:2;}
+    .canvas-wrap{min-height:340px; order:1;}
+    .field input{font-size:16px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>几何绘图实验室</h1>
+  <span class="sub">Point · Circle · Triangle —— 基于坐标的形状设计</span>
+  <span class="tag">坐标纸</span>
+</header>
+
+<main>
+  <aside>
+    <div>
+      <div class="sec-title">图形类型</div>
+      <div class="types" id="types">
+        <button data-t="point">点</button>
+        <button data-t="circle" class="on">圆</button>
+        <button data-t="triangle">三角形</button>
+        <button data-t="ellipse">椭圆</button>
+        <button data-t="polygon">多边形</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">参数（坐标范围 -10 ~ 10）</div>
+      <div id="params"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="btnGen">绘制图形</button>
+      <button class="btn" id="btnRandom">随机示例</button>
+      <button class="btn danger" id="btnClear">清空画布</button>
+    </div>
+
+    <div>
+      <div class="sec-title">信息输出</div>
+      <div class="info-box" id="info">在画布上点击可添加点；选择图形并填入坐标后点击「绘制图形」。</div>
+    </div>
+
+    <div class="legend">
+      <b>已绘图形</b>：点（橙点）、圆（蓝）、三角形（青）、椭圆（橙）、多边形（紫）。<br>
+      <b>点击画布</b>：添加坐标点并显示坐标。<br>
+      <b>合法性检查</b>：三点共线或两边之和 ≤ 第三边时，三角形会被拒绝。
+    </div>
+  </aside>
+
+  <section>
+    <div class="canvas-wrap">
+      <canvas id="cv"></canvas>
+    </div>
+    <div class="hint">
+      坐标系：<code>x 向右</code> <code>y 向上</code>，一格 = 1 单位。鼠标/手指在画布上移动可查看坐标。
+    </div>
+  </section>
+</main>
+
+<footer>抽象类 Shape 定义周长与面积接口，Circle / Triangle / Ellipse / Polygon 各自实现 —— 面向对象多态演示</footer>
+
+<script>
+"use strict";
+/* ===== 状态 ===== */
+const state = {
+  shapes: [],      // 已绘制的图形
+  points: [],      // 点击添加的点
+  type: "circle"
+};
+
+/* ===== 画布与坐标系 ===== */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const X_MIN = -10, X_MAX = 10, Y_MIN = -10, Y_MAX = 10;
+
+function sizeCanvas(){
+  const wrap = cv.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cv.style.width = w + "px"; cv.style.height = h + "px";
+}
+function sx(x){ return (x - X_MIN) / (X_MAX - X_MIN) * cv.clientWidth; }
+function sy(y){ return (Y_MAX - y) / (Y_MAX - Y_MIN) * cv.clientHeight; }
+function wx(px){ return X_MIN + px / cv.clientWidth * (X_MAX - X_MIN); }
+function wy(py){ return Y_MAX - py / cv.clientHeight * (Y_MAX - Y_MIN); }
+
+/* ===== 绘制 ===== */
+function drawGrid(){
+  const w = cv.clientWidth, h = cv.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = "#ece6d8"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = X_MIN; i <= X_MAX; i++) {
+    ctx.moveTo(sx(i), 0); ctx.lineTo(sx(i), h);
+    ctx.moveTo(0, sy(i)); ctx.lineTo(w, sy(i));
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "#b3aa94"; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, sy(0)); ctx.lineTo(w, sy(0));
+  ctx.moveTo(sx(0), 0); ctx.lineTo(sx(0), h);
+  ctx.stroke();
+  ctx.fillStyle = "#9a917c"; ctx.font = "10px ui-monospace,Menlo,monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let i = X_MIN; i <= X_MAX; i++) {
+    if (i === 0) continue;
+    ctx.fillText(String(i), sx(i), sy(0) + 3);
+  }
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i = Y_MIN; i <= Y_MAX; i++) {
+    if (i === 0) continue;
+    ctx.fillText(String(i), sx(0) - 5, sy(i));
+  }
+  ctx.textAlign = "left"; ctx.textBaseline = "top";
+  ctx.fillStyle = "#6b7280"; ctx.font = "11px ui-monospace,Menlo,monospace";
+  ctx.fillText("0", sx(0) + 4, sy(0) + 4);
+}
+
+function drawPoint(p, color){
+  const x = sx(p.x), y = sy(p.y);
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = color || "#e8590c"; ctx.fill();
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = "#24292f"; ctx.font = "11px ui-monospace,Menlo,monospace";
+  ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+  ctx.fillText("(" + fmt(p.x) + ", " + fmt(p.y) + ")", x + 7, y - 6);
+}
+function fmt(v){ return Math.round(v * 100) / 100; }
+
+function drawShape(sh){
+  if (sh.type === "circle") {
+    ctx.beginPath(); ctx.arc(sx(sh.cx), sy(sh.cy), sh.r * (cv.clientWidth / (X_MAX - X_MIN)), 0, Math.PI * 2);
+    ctx.strokeStyle = "#3b5bdb"; ctx.lineWidth = 2.5; ctx.stroke();
+    drawPoint({x:sh.cx, y:sh.cy}, "#3b5bdb");
+  } else if (sh.type === "triangle") {
+    const pts = [sh.a, sh.b, sh.c];
+    pathOf(pts, "#0ca678");
+  } else if (sh.type === "ellipse") {
+    ctx.beginPath();
+    ctx.ellipse(sx(sh.cx), sy(sh.cy), sh.rx * (cv.clientWidth / (X_MAX - X_MIN)), sh.ry * (cv.clientWidth / (X_MAX - X_MIN)), 0, 0, Math.PI * 2);
+    ctx.strokeStyle = "#e8590c"; ctx.lineWidth = 2.5; ctx.stroke();
+    drawPoint({x:sh.cx, y:sh.cy}, "#e8590c");
+  } else if (sh.type === "polygon") {
+    pathOf(sh.pts, "#7048e8");
+  }
+}
+function pathOf(pts, color){
+  ctx.beginPath();
+  ctx.moveTo(sx(pts[0].x), sy(pts[0].y));
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(sx(pts[i].x), sy(pts[i].y));
+  ctx.closePath();
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke();
+  pts.forEach(p => drawPoint(p, color));
+}
+
+function draw(){
+  drawGrid();
+  state.points.forEach(p => drawPoint(p));
+  state.shapes.forEach(drawShape);
+}
+
+/* ===== 参数表单 ===== */
+const PARAMS = {
+  point:    () => `<div class="row"><div class="field"><label>x</label><input id="p_x" type="number" value="2"></div><div class="field"><label>y</label><input id="p_y" type="number" value="3"></div></div>`,
+  circle:   () => `<div class="row"><div class="field"><label>cx</label><input id="c_cx" type="number" value="0"></div><div class="field"><label>cy</label><input id="c_cy" type="number" value="0"></div></div><div class="field"><label>r</label><input id="c_r" type="number" value="4"></div>`,
+  triangle: () => `<div class="row"><div class="field"><label>ax</label><input id="t_ax" type="number" value="0"></div><div class="field"><label>ay</label><input id="t_ay" type="number" value="0"></div></div><div class="row"><div class="field"><label>bx</label><input id="t_bx" type="number" value="4"></div><div class="field"><label>by</label><input id="t_by" type="number" value="0"></div></div><div class="row"><div class="field"><label>cx</label><input id="t_cx" type="number" value="0"></div><div class="field"><label>cy</label><input id="t_cy" type="number" value="3"></div></div>`,
+  ellipse:  () => `<div class="row"><div class="field"><label>cx</label><input id="e_cx" type="number" value="0"></div><div class="field"><label>cy</label><input id="e_cy" type="number" value="0"></div></div><div class="row"><div class="field"><label>rx</label><input id="e_rx" type="number" value="5"></div><div class="field"><label>ry</label><input id="e_ry" type="number" value="3"></div></div>`,
+  polygon:  () => `<div class="field"><label>顶点</label><input id="g_pts" type="text" value="0,0 3,0 4,2 2,3 -1,1"></div><div class="hint">格式：x,y x,y …（按顺序）</div>`
+};
+
+function renderParams(){
+  document.getElementById("params").innerHTML = PARAMS[state.type]();
+}
+function num(id){ return parseFloat(document.getElementById(id).value); }
+
+/* ===== 几何计算（与 Python 作业同源） ===== */
+function dist(a, b){ return Math.hypot(a.x - b.x, a.y - b.y); }
+function triInfo(a, b, c){
+  const sides = [dist(a,b), dist(b,c), dist(c,a)].sort((p,q)=>p-q);
+  const area = Math.abs((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y)) / 2;
+  if (area < 1e-9 || sides[0] + sides[1] <= sides[2] + 1e-9) return null;
+  let kind = "一般三角形";
+  if (Math.abs(sides[0]-sides[2]) < 1e-9) kind = "等边三角形";
+  else if (Math.abs(sides[0]-sides[1]) < 1e-9 || Math.abs(sides[1]-sides[2]) < 1e-9) kind = "等腰三角形";
+  if (Math.abs(sides[0]**2 + sides[1]**2 - sides[2]**2) < 1e-6) kind = (kind === "一般三角形" ? "" : kind.replace("三角形","")) + "直角三角形";
+  return { perimeter: sides.reduce((s,v)=>s+v,0), area, kind };
+}
+function polyInfo(pts){
+  let per = 0, s = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++){
+    per += dist(pts[i], pts[(i+1)%n]);
+    s += pts[i].x * pts[(i+1)%n].y - pts[(i+1)%n].x * pts[i].y;
+  }
+  return { perimeter: per, area: Math.abs(s)/2 };
+}
+function ellipsePer(rx, ry){
+  const h = ((rx-ry)**2) / ((rx+ry)**2);
+  return Math.PI * (rx+ry) * (1 + 3*h/(10 + Math.sqrt(4-3*h)));
+}
+
+/* ===== 生成图形 ===== */
+const infoBox = document.getElementById("info");
+function out(html){ infoBox.innerHTML = html; }
+
+function generate(){
+  const t = state.type;
+  let sh, msg = "";
+  try {
+    if (t === "point") {
+      const x = num("p_x"), y = num("p_y");
+      sh = { type:"point", x, y };
+      msg = "点：(" + fmt(x) + ", " + fmt(y) + ")";
+    } else if (t === "circle") {
+      const cx = num("c_cx"), cy = num("c_cy"), r = num("c_r");
+      if (r < 0) throw new Error("半径不能为负数");
+      sh = { type:"circle", cx, cy, r };
+      msg = "圆：周长 " + fmt(2*Math.PI*r) + "，面积 " + fmt(Math.PI*r*r);
+      const rel = state.points.map(p => {
+        const d = Math.hypot(p.x-cx, p.y-cy);
+        const rl = d < r - 1e-9 ? "圆内" : (d > r + 1e-9 ? "圆外" : "圆上");
+        return "点(" + fmt(p.x) + ", " + fmt(p.y) + ") → " + rl;
+      });
+      if (rel.length) msg += "\n" + rel.join("\n");
+    } else if (t === "triangle") {
+      const a = {x:num("t_ax"), y:num("t_ay")}, b = {x:num("t_bx"), y:num("t_by")}, c = {x:num("t_cx"), y:num("t_cy")};
+      const info = triInfo(a, b, c);
+      if (!info) throw new Error("三点无法构成三角形：共线或两边之和不大于第三边");
+      sh = { type:"triangle", a, b, c };
+      msg = "三角形（" + info.kind + "）：周长 " + fmt(info.perimeter) + "，面积 " + fmt(info.area);
+    } else if (t === "ellipse") {
+      const cx = num("e_cx"), cy = num("e_cy"), rx = num("e_rx"), ry = num("e_ry");
+      if (rx < 0 || ry < 0) throw new Error("半轴长度不能为负数");
+      sh = { type:"ellipse", cx, cy, rx, ry };
+      msg = "椭圆：周长≈ " + fmt(ellipsePer(rx, ry)) + "，面积 " + fmt(Math.PI*rx*ry);
+    } else if (t === "polygon") {
+      const pts = document.getElementById("g_pts").value.trim().split(/\s+/)
+        .map(s => { const [x, y] = s.split(",").map(Number); return {x, y}; });
+      if (pts.length < 3) throw new Error("至少需要 3 个顶点");
+      const info = polyInfo(pts);
+      sh = { type:"polygon", pts };
+      msg = "多边形（" + pts.length + " 顶点）：周长 " + fmt(info.perimeter) + "，面积 " + fmt(info.area);
+    }
+    state.shapes.push(sh);
+    out(msg);
+  } catch (e) {
+    out('<span class="err">生成失败：' + e.message + "</span>");
+  }
+  draw();
+}
+
+/* ===== 随机示例 ===== */
+const SAMPLES = [
+  { type:"circle", cx:0, cy:0, r:5 },
+  { type:"triangle", a:{x:0,y:0}, b:{x:4,y:0}, c:{x:0,y:3} },
+  { type:"triangle", a:{x:-3,y:0}, b:{x:3,y:0}, c:{x:0,y:Math.sqrt(12)} },
+  { type:"triangle", a:{x:-2,y:0}, b:{x:2,y:0}, c:{x:0,y:3} },
+  { type:"ellipse", cx:0, cy:0, rx:5, ry:3 },
+  { type:"polygon", pts:[{x:0,y:0},{x:3,y:0},{x:4,y:2},{x:2,y:3},{x:-1,y:1}] }
+];
+function randomSample(){
+  state.shapes.push(SAMPLES[Math.floor(Math.random() * SAMPLES.length)]);
+  draw();
+  out("已添加随机图形。试试清空后再点几次，观察不同图形。");
+}
+
+/* ===== 清空 ===== */
+document.getElementById("btnClear").onclick = () => {
+  state.shapes = []; state.points = [];
+  out("画布已清空。点击画布添加点，或选择图形绘制。");
+  draw();
+};
+
+/* ===== 交互：点击添加点 / 移动显示坐标 ===== */
+let cursor = null;
+cv.addEventListener("pointerdown", e => {
+  const rect = cv.getBoundingClientRect();
+  const x = wx(e.clientX - rect.left), y = wy(e.clientY - rect.top);
+  if (x < X_MIN || x > X_MAX || y < Y_MIN || y > Y_MAX) return;
+  state.points.push({x, y});
+  draw();
+});
+cv.addEventListener("pointermove", e => {
+  const rect = cv.getBoundingClientRect();
+  cursor = { x: wx(e.clientX - rect.left), y: wy(e.clientY - rect.top) };
+  draw();
+  ctx.fillStyle = "#6b7280"; ctx.font = "12px ui-monospace,Menlo,monospace";
+  ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+  ctx.fillText("(" + fmt(cursor.x) + ", " + fmt(cursor.y) + ")", cv.clientWidth - 8, cv.clientHeight - 8);
+});
+cv.addEventListener("pointerleave", () => { cursor = null; draw(); });
+
+/* ===== 类型切换 ===== */
+document.getElementById("types").addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  state.type = btn.dataset.t;
+  document.querySelectorAll("#types button").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  renderParams();
+});
+
+/* ===== 初始化 ===== */
+document.getElementById("btnGen").onclick = generate;
+document.getElementById("btnRandom").onclick = randomSample;
+window.addEventListener("resize", () => { sizeCanvas(); draw(); });
+sizeCanvas();
+renderParams();
+draw();
+</script>
+</body>
+</html>
