@@ -7,8 +7,29 @@
 
 运行：python3 shapes.py
 """
+import json
 import math
+import sys
 from abc import ABC, abstractmethod
+
+# ================================================================
+# 公式字典（与 形状设计可视化.html 共享，改一处必须同步改另一处）
+# ----------------------------------------------------------------
+# 1. 两点距离：sqrt((x1-x2)^2 + (y1-y2)^2)      → Point.distance / JS dist()
+# 2. 三角形面积：叉积法 |(x2-x1)(y3-y1)-(x3-x1)(y2-y1)|/2
+#                                              → Triangle.area / JS triInfo()
+# 3. 三角形合法性：面积 > 1e-9 且最短两边之和 > 最长边 + 1e-9
+#                                              → Triangle._valid / JS triInfo()
+# 4. 直角三角形判定：c^2 ≈ a^2 + b^2（容差 1e-6）
+#                                              → Triangle.is_right / JS triInfo()
+# 5. 等腰/等边判定：边长差容差 1e-9            → Triangle.is_* / JS triInfo()
+# 6. 圆：周长 2πr，面积 πr^2，点位置判定容差 1e-9
+#                                              → Circle / JS generate()
+# 7. 椭圆周长：拉马努金公式 h=(rx-ry)^2/(rx+ry)^2
+#    P ≈ π(rx+ry)(1 + 3h/(10+sqrt(4-3h)))       → Ellipse.perimeter / JS ellipsePer()
+# 8. 多边形面积：鞋带公式 |Σ(xi*yj - xj*yi)|/2  → Polygon.area / JS polyInfo()
+# 对拍基准：python3 shapes.py --self-test 输出，与 HTML 内 BASELINE 对照
+# ================================================================
 
 # ============ 基础：点 ============
 class Point:
@@ -288,7 +309,68 @@ MENU = """
  请输入功能编号："""
 
 
+def self_test():
+    """生成对拍基准：固定用例的标准结果，供 HTML 端自检比对。
+
+    运行：python3 shapes.py --self-test
+    """
+    cases = []
+
+    c = Circle(Point(0, 0), 5)
+    cases.append({
+        "id": "circle_r5",
+        "desc": "圆 圆心(0,0) 半径5",
+        "expected": {
+            "perimeter": c.perimeter(),
+            "area": c.area(),
+            "point_on": c.relation(Point(3, 4)),
+            "point_inside": c.relation(Point(1, 1)),
+            "point_outside": c.relation(Point(6, 0)),
+        },
+    })
+
+    t1 = Triangle(Point(0, 0), Point(4, 0), Point(0, 3))
+    cases.append({
+        "id": "triangle_345",
+        "desc": "三角形 (0,0)(4,0)(0,3) 直角三角形",
+        "expected": {"perimeter": t1.perimeter(), "area": t1.area(), "kind": t1.kinds()},
+    })
+
+    t2 = Triangle(Point(0, 0), Point(4, 0), Point(2, 3))
+    cases.append({
+        "id": "triangle_isosceles",
+        "desc": "三角形 (0,0)(4,0)(2,3) 等腰三角形",
+        "expected": {"perimeter": t2.perimeter(), "area": t2.area(), "kind": t2.kinds()},
+    })
+
+    t3 = Triangle(Point(0, 0), Point(4, 0), Point(2, math.sqrt(12)))
+    cases.append({
+        "id": "triangle_equilateral",
+        "desc": "三角形 (0,0)(4,0)(2,√12) 等边三角形",
+        "expected": {"perimeter": t3.perimeter(), "area": t3.area(), "kind": t3.kinds()},
+    })
+
+    e = Ellipse(Point(0, 0), 5, 3)
+    cases.append({
+        "id": "ellipse_5x3",
+        "desc": "椭圆 中心(0,0) 半轴5×3",
+        "expected": {"perimeter": e.perimeter(), "area": e.area()},
+    })
+
+    poly = Polygon([Point(0, 0), Point(2, 0), Point(3, 2), Point(1, 3), Point(-1, 1)])
+    cases.append({
+        "id": "polygon_5",
+        "desc": "多边形 (0,0)(2,0)(3,2)(1,3)(-1,1)",
+        "expected": {"perimeter": poly.perimeter(), "area": poly.area()},
+    })
+
+    return {"version": 1, "cases": cases}
+
+
 def main():
+    if "--self-test" in sys.argv:
+        print(json.dumps(self_test(), ensure_ascii=False, indent=2))
+        return
     handlers = {"1": create_point, "2": create_circle, "3": create_triangle,
                 "4": create_ellipse, "5": create_polygon}
     while True:
