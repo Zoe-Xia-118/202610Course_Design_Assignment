@@ -191,51 +191,122 @@ class Polygon(Shape):
         return "多边形 " + "-".join(str(p) for p in self.vertices)
 
 
-# ============ 演示主程序 ============
-def demo():
-    print("=" * 52)
-    print("1. 点（Point）")
-    p1, p2 = Point(1, 2), Point(4, 6)
-    print(f"  p1={p1}, p2={p2}，两点距离 = {p1.distance(p2):.4f}")
+# ============ 交互式主程序（输入输出版） ============
+def read_point(tag):
+    """读取一个点：要求输入 'x y'（空格分隔），返回 Point 对象"""
+    while True:
+        raw = input(f"  请输入{tag}的坐标（x y，空格分隔）：").strip()
+        parts = raw.split()
+        if len(parts) != 2:
+            print("  格式错误：需要两个数字，例如：1 2")
+            continue
+        try:
+            return Point(float(parts[0]), float(parts[1]))
+        except ValueError:
+            print("  输入不是有效数字，请重新输入")
 
-    print("\n2. 圆（Circle）与点在圆内/上/外判定")
-    c = Circle(Point(0, 0), 5)
-    print(f"  {c}，周长={c.perimeter():.4f}，面积={c.area():.4f}")
-    for q in (Point(3, 4), Point(0, 5), Point(6, 0), Point(1, 1)):
-        print(f"  点{q} 在：{c.relation(q)}")
 
-    print("\n3. 三角形（Triangle）与合法性检查")
-    t1 = Triangle(Point(0, 0), Point(4, 0), Point(0, 3))
-    print(f"  {t1}，周长={t1.perimeter():.4f}，面积={t1.area():.4f}，类型：{t1.kinds()}")
+def read_number(tag):
+    """读取一个非负数字（半径、半轴等）"""
+    while True:
+        try:
+            v = float(input(f"  请输入{tag}：").strip())
+            if v < 0:
+                print("  不能为负数，请重新输入")
+                continue
+            return v
+        except ValueError:
+            print("  输入不是有效数字，请重新输入")
+
+
+def create_point():
+    p = read_point("点")
+    print(f"  已创建点：{p}")
+    print(f"  到原点的距离 = {p.distance(Point(0, 0)):.4f}")
+
+
+def create_circle():
+    center = read_point("圆心")
+    r = read_number("半径")
+    c = Circle(center, r)
+    print(f"  已创建圆：{c}")
+    print(f"  周长 = {c.perimeter():.4f}，面积 = {c.area():.4f}")
+    if input("  是否再输入一个点，判断它在圆内/上/外？(y/n)：").strip().lower() == "y":
+        q = read_point("测试点")
+        print(f"  点 {q} 在：{c.relation(q)}")
+
+
+def create_triangle():
+    print("  依次输入三个顶点：")
+    a = read_point("顶点A")
+    b = read_point("顶点B")
+    c = read_point("顶点C")
     try:
-        t2 = Triangle(Point(-2, 1), Point(1, 1), Point(4, 1))   # 三点共线
-        print(f"  {t2}")
+        t = Triangle(a, b, c)
     except ValueError as e:
-        print(f"  非法输入被拒绝：{e}")
+        print(f"  非法三角形被拒绝：{e}")
+        return
+    print(f"  已创建三角形：{t}")
+    print(f"  周长 = {t.perimeter():.4f}，面积 = {t.area():.4f}，类型 = {t.kinds()}")
 
-    print("\n4. 抽象类设计（思考题）")
-    shapes = [Circle(Point(0, 0), 3), Triangle(Point(0, 0), Point(3, 0), Point(0, 4)),
-              Ellipse(Point(0, 0), 5, 3), Polygon([Point(0, 0), Point(2, 0),
-              Point(3, 2), Point(1, 3), Point(-1, 1)])]
-    for s in shapes:
-        print(f"  {type(s).__name__:9s}：周长={s.perimeter():8.4f}，面积={s.area():8.4f}")
 
-    print("\n5. 进阶：特殊三角形判定")
-    tests = {
-        "等腰": [(0, 0), (4, 0), (2, 3)],
-        "等边": [(0, 0), (4, 0), (2, math.sqrt(12))],
-        "直角": [(0, 0), (3, 0), (0, 4)],
-    }
-    for name, pts in tests.items():
-        tri = Triangle(*(Point(*p) for p in pts))
-        print(f"  构造{name}数据 → {tri.kinds()}（周长={tri.perimeter():.4f}）")
+def create_ellipse():
+    center = read_point("中心")
+    rx = read_number("半长轴 rx")
+    ry = read_number("半短轴 ry")
+    e = Ellipse(center, rx, ry)
+    print(f"  已创建椭圆：{e}")
+    print(f"  周长 ≈ {e.perimeter():.4f}，面积 = {e.area():.4f}")
 
-    print("\n6. 进阶：椭圆与多边形")
-    e = Ellipse(Point(0, 0), 5, 3)
-    print(f"  {e}，周长≈{e.perimeter():.4f}，面积={e.area():.4f}")
-    poly = Polygon([Point(0, 0), Point(2, 0), Point(3, 2), Point(1, 3), Point(-1, 1)])
-    print(f"  {poly}，周长={poly.perimeter():.4f}，面积={poly.area():.4f}")
+
+def create_polygon():
+    while True:
+        try:
+            n = int(input("  请输入顶点个数（>=3）：").strip())
+            if n >= 3:
+                break
+            print("  至少需要 3 个顶点")
+        except ValueError:
+            print("  请输入整数")
+    verts = [read_point(f"顶点{i + 1}") for i in range(n)]
+    poly = Polygon(verts)
+    print(f"  已创建多边形：{poly}")
+    print(f"  周长 = {poly.perimeter():.4f}，面积 = {poly.area():.4f}")
+
+
+MENU = """
+==============================
+ 基于坐标的形状设计（交互版）
+==============================
+ 1. 创建点（Point）
+ 2. 创建圆（Circle）+ 点在圆内/上/外判定
+ 3. 创建三角形（Triangle）含合法性检查
+ 4. 创建椭圆（Ellipse）
+ 5. 创建多边形（Polygon）
+ 0. 退出
+------------------------------
+ 请输入功能编号："""
+
+
+def main():
+    handlers = {"1": create_point, "2": create_circle, "3": create_triangle,
+                "4": create_ellipse, "5": create_polygon}
+    while True:
+        choice = input(MENU).strip()
+        if choice == "0":
+            print("已退出，再见！")
+            break
+        handler = handlers.get(choice)
+        if handler is None:
+            print("  无效编号，请输入 0~5")
+            continue
+        print()
+        try:
+            handler()
+        except ValueError as e:
+            print(f"  输入不合法：{e}")
+        print()
 
 
 if __name__ == "__main__":
-    demo()
+    main()
